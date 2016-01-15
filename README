@@ -1,0 +1,14 @@
+Required Libraries
+    core
+        FindBin::libs
+        Readonly
+        Log::Log4perl
+        Object::Trampoline
+            (1.26 recommended for error reporting)
+        Config::General
+    nagios server
+        Proc::Reliable
+    encryption - recommended, replace with whatever suits you
+        Crypt::CBC
+        Crypt::OpenSSL::AES
+

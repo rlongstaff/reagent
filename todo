@@ -1,0 +1,17 @@
+
+logrotated conf file
+log rotation / config reload on HUP
+
+adjust phase1 protocol for pub key
+Reagent::Server::Admin module for warm restarts
+
+add version advertisements for Server modules
+    do we need the same for the daemon?
+        or should we rely on the Protocol version?
+
+Storable?
+    version problems between rhel3/5 (2.6 vs 2.7)
+    use Data::Dumper instead?
+
+catch errors in Reagent::Client::*
+    prevent die/croak/undef ref from posting bad response to nagios

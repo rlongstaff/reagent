@@ -1,0 +1,5 @@
+#!/bin/sh
+
+echo "WARNING: Test is warning!"
+
+exit 1

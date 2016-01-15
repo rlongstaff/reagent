@@ -1,0 +1,108 @@
+#!/bin/sh
+
+##############################################################################
+#
+#  Copyright (C) 2010 Robert Longstaff (rob@longstaff.us)
+#  
+#      This program is free software; you can redistribute it and/or modify
+#      it under the terms of the GNU General Public License as published by
+#      the Free Software Foundation; either version 2 of the License, or
+#      (at your option) any later version.
+#  
+#      This program is distributed in the hope that it will be useful,
+#      but WITHOUT ANY WARRANTY; without even the implied warranty of
+#      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#      GNU General Public License for more details.
+#  
+#      You should have received a copy of the GNU General Public License along
+#      with this program; if not, write to the Free Software Foundation, Inc.,
+#      51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+#
+##############################################################################
+
+# chkconfig: 345 90 10
+# description: Reagent monitoring agent
+
+REAGENT_HOME=/usr/local/reagent
+PID_FILE=$REAGENT_HOME/var/reagentd.pid
+
+export REAGENT_HOME PID_FILE
+
+get_pid() {
+    P=$(cat $PID_FILE 2> /dev/null)
+    if [ "x$P" != "x" ]; then
+        /bin/ps $P >& /dev/null
+        if [ $? -eq 0 ]; then
+            PID=$P
+            return 0
+        fi
+    fi
+    return 1
+}
+
+status() {
+    get_pid
+    if [ $? -eq 0 ]; then
+        echo "reagentd is running with pid $PID"
+        exit 0
+    else
+        echo "reagentd is not running"
+        exit 1
+    fi
+}
+
+start() {
+    if [ -f $PID_FILE ]; then
+        get_pid
+        if [ $? -eq 0 ]; then
+            echo "reagentd is already running with pid $PID"
+            exit 1
+        else
+            echo "Cleaning stale $PID_FILE"
+            /bin/rm -f $PID_FILE
+        fi
+    fi
+
+    /bin/echo -n "Starting ReAgent: "
+    cd $REAGENT_HOME
+    $REAGENT_HOME/reagentd
+    if [ $? -eq 0 ]; then
+        /bin/echo "OK"
+    else
+        /bin/echo "FAILED"
+    fi
+}
+
+stop() {
+    /bin/echo -n "Stopping ReAgent: "
+    get_pid
+    if [ $? -eq 1 ]; then
+        /bin/echo "FAILED. ReAgent not running"
+        exit 1
+    else
+        /bin/kill -3 $PID
+        /bin/echo "OK"
+    fi
+}
+
+# See how we were called.
+    case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    restart)
+        stop
+        sleep 3
+        start
+        ;;
+    status)
+        status
+        ;;
+    *)
+        /bin/echo "Usage: $0 {start|stop|restart|status}"
+        exit
+esac
+

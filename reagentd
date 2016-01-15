@@ -1,0 +1,71 @@
+#!/usr/bin/perl
+
+##############################################################################
+#
+#  Copyright (C) 2010 Robert Longstaff (rob@longstaff.us)
+#  
+#      This program is free software; you can redistribute it and/or modify
+#      it under the terms of the GNU General Public License as published by
+#      the Free Software Foundation; either version 2 of the License, or
+#      (at your option) any later version.
+#  
+#      This program is distributed in the hope that it will be useful,
+#      but WITHOUT ANY WARRANTY; without even the implied warranty of
+#      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#      GNU General Public License for more details.
+#  
+#      You should have received a copy of the GNU General Public License along
+#      with this program; if not, write to the Free Software Foundation, Inc.,
+#      51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+#
+##############################################################################
+
+use warnings;
+use strict;
+
+use FindBin::libs;
+use Getopt::Std;
+
+use Reagent::Server::Daemon;
+
+my $new_name = join(' ', 'reagentd', @ARGV);
+$new_name =~ s/\s*$//;
+chomp $new_name;
+$0 = $new_name;
+
+
+our %opts;
+getopts( 'dV', \%opts );
+
+my $debug = $opts{d} ? 1 : 0;
+my $version_only = $opts{V} ? 1 : 0;
+
+if ($version_only) {
+    print "Reagent " . $Reagent::Server::Daemon::VERSION . "\n";
+    exit 0;
+}
+
+my $run = 1;
+while ($run) {
+    my $reagent = Reagent::Server::Daemon->new();
+
+    # set operating flags
+    $reagent->debug($debug);
+
+    # keep running daemon until it tells us to stop
+    while ($reagent->run_status == $Reagent::Server::Daemon::RUN_STATUS_RUN
+        || $reagent->run_status == $Reagent::Server::Daemon::RUN_STATUS_RELOAD )
+    {
+        $reagent->configure() or last;
+        $reagent->run();
+
+        # flush modules for recompile
+        %INC = ();
+    }
+    if ( $reagent->run_status == $Reagent::Server::Daemon::RUN_STATUS_QUIT ) {
+        $run = 0;
+    }
+}
+
+exit 0;
+

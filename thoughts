@@ -1,0 +1,135 @@
+Term Definition
+    Monitoring Node (Node)
+        An object containing resources to be monitored
+    Monitoring Hub (Hub)
+        Local monitoring server
+        Schedules and dispatches monitoring requests to nodes
+        First pass result processing
+        Alerting? Direct? To Master?
+    Monitoring Master (Master)
+        Central configuration interface
+        Ultimate authentication authority
+            Holds CA
+            Signs Hub keys
+
+Statements of Function
+    A compromised node will NOT allow the compromise of another node
+    A compromised node will NOT allow the compromise of a hub
+    A compromised hub MAY allow the compromise of all nodes under its care
+    A compromised hub will NOT allow the compromise of another hub
+    A compromised hub will NOT allow the compromise of nodes under another hub
+
+#####
+# To clean
+#####
+
+filter->prepare vs server
+    objects initialized from config w/ class + args, but doing so totally
+        differently
+replace object loader with object::trampoline or something more robust
+Reagent::Plugin for lazy-loading
+    given a class and id, %args
+    copy __get_class functionality
+
+#####
+Agent
+    2 stage modular
+        main daemon in module loaded by minimal bootstrap
+            allows for warm upgrades / soft restart
+        each operating mode in its own module
+    rc script supports alternate perl binary
+
+Line level protocol
+    binary or http-style headers?
+        light binary wrapper around text payload
+        Filters will handle encryption of payload, leaving 100% binary
+            protocol after encryption
+    needs magic or checksum for alignment
+
+Application level protocol
+    **** PHASE 1 authentication / encryption ****
+    s: banner
+        header: protocol version
+        header: configured filters
+            TODO need to work out identifiers for filters
+                class name? abbr class name? 
+                free-form based on config?
+                    I like this one; allows for multiple configs of the same
+                        module to exist in a hetergenious environment
+    c: respond with accept of filter chain
+        in plaintext? could confound known plaintext attacks somewhat
+            does that matter? there are so many places to launch a KP attack..
+    * everything from this point on will be in filtered mode *
+    **** PHASE 2 authentication / user ****
+    s: respond with available auth
+    c: chosen auth method + (possible) credentials
+        conversation from here until overall success/fail dictated by
+            auth mech
+    s: respond with auth success / fail
+    **** PHASE 3 plugin selection  ****
+    s: advertise available plugins
+    c: respond with plugin selection
+    s: respond with success/fail on plugin selection
+        allows for later authorization add-in
+        can also add config for displaying unauthz plugins for current user
+    * Reagent::Server::* / Reagent::Client::* now take over conversation
+
+    ** Need to standardize on authz denied
+    ** Need to standardize headers for
+        response: 'Status'?
+            OK, DENIED, ERROR
+        current phase / packet description
+            ....
+
+
+Daemon::Connection abstraction
+    hold info on authn/user name after auth
+    various other bits on client state
+
+Filters
+    Need to negotiate Filters prior to auth
+    negotiation on *client* side
+    allow many available + configured filters on client side
+    only specify ACTIVE filters on server side
+
+Encryption
+    small abstraction layer in front of actual enc/dec
+    methods
+        init
+        encrypt
+        decrypt
+
+Authentication
+    key negotiation
+        modular
+        default DHKE
+            2nd thought; let's get pre-shared 3DES / AES working first
+        can get off ground with sub get_key { return $cfg{key} }
+        ? do we care about known-plaintext attacks ?
+
+Logging
+    log4perl
+
+Perl Modules
+    Avoid deep dependencies for maximum portability
+    Config::General
+
+Object abstraction
+    Object::Base...:-/
+    Class::Accessor
+
+
+#######################################
+Related projects
+#######################################
+
+universal check harness / API
+    first module for reagent will simply run nagios compatible checks.
+    as checks are implemented in perl, we'll want a cetral safety harness.
+    this can be loaded by a more efficient reagent plugin that doesn't need to
+        fork an additional process to execute just the check
+
+Remote Code Loading
+    Optional code caching for alternate processes
+    Optional name cachine to allow a parent to load the code
+

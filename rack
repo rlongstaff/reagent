@@ -1,0 +1,104 @@
+#!/usr/bin/perl
+# nagios: +epn
+
+##############################################################################
+#
+#  Copyright (C) 2010 Robert Longstaff (rob@longstaff.us)
+#  
+#      This program is free software; you can redistribute it and/or modify
+#      it under the terms of the GNU General Public License as published by
+#      the Free Software Foundation; either version 2 of the License, or
+#      (at your option) any later version.
+#  
+#      This program is distributed in the hope that it will be useful,
+#      but WITHOUT ANY WARRANTY; without even the implied warranty of
+#      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#      GNU General Public License for more details.
+#  
+#      You should have received a copy of the GNU General Public License along
+#      with this program; if not, write to the Free Software Foundation, Inc.,
+#      51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+#
+##############################################################################
+
+use warnings;
+use strict;
+
+our $VERSION = '0.1.2';
+
+use Getopt::Long qw(:config no_permute pass_through require_order);
+use FindBin::libs;
+use File::Basename qw(dirname);
+use File::Spec;
+use Reagent::Client::Nagios;
+
+my $USAGE = <<END_USAGE
+USAGE: $0 --host <host> [--debug] [--config <config_file>] <check> [<check_arg>,...]
+Version: $VERSION
+END_USAGE
+;
+
+# TODO move to a central nagios module; Nagios::Plugin or otherwise.
+my $NAGIOS_UNKNOWN = 3;
+
+# TODO Move argument process to split between Reagent::Client and
+#      Reagent::Client::*
+
+my $host;
+my $cfg_file = File::Spec->catfile(dirname($0), 'etc', 'rack.cfg');
+my $debug = 0;
+
+GetOptions(
+    'host=s' => \$host,
+    'config=s' => \$cfg_file,
+    'debug' => \$debug,
+);
+
+my ($check, @check_args) = grep {defined} @ARGV;
+
+unless ( -f $cfg_file) {
+    print "Config not found: $cfg_file\n";
+    exit $NAGIOS_UNKNOWN;
+}
+
+unless (defined $check) {
+    print "$USAGE\nNo check to execute\n";
+    exit $NAGIOS_UNKNOWN;
+} 
+
+my $reagent = Reagent::Client::Nagios->new(
+    ConfigFile => $cfg_file,
+    Host => $host,
+    Debug => $debug,
+);
+
+unless ($reagent) {
+    print "$USAGE\nFailed to create reagent object\n";
+    exit $NAGIOS_UNKNOWN;
+}
+
+unless ($reagent->connect()) {
+    print "Could not establish a session with $host: $!\n";
+    exit $NAGIOS_UNKNOWN;
+}
+
+unless ($reagent->request_server('Nagios')) {
+    print "Failed to switch to Reagent server: Nagios\n";
+    exit $NAGIOS_UNKNOWN;
+}
+
+my ($rc, $output) = $reagent->check($check, @check_args);
+
+# deal with missing output msg
+if ((!defined $output) || defined $output && $output eq '') {
+    $output = "No output from check";
+}
+
+#... and return code
+unless (defined $rc) {
+    $rc = $NAGIOS_UNKNOWN;
+}
+
+print "$output\n";
+
+exit $rc;
